@@ -2,6 +2,8 @@ package com.test;
 
 import org.pentaho.di.core.KettleEnvironment;
 import org.pentaho.di.core.exception.KettleException;
+import org.pentaho.di.core.logging.LogLevel;
+import org.pentaho.di.core.parameters.UnknownParamException;
 import org.pentaho.di.core.util.EnvUtil;
 import org.pentaho.di.job.Job;
 import org.pentaho.di.job.JobMeta;
@@ -33,8 +35,16 @@ public class KettleUtil {
             JobMeta jobMeta = new JobMeta(jobPath, null);
             Job job = new Job(null, jobMeta);
             if (paraMap != null && !paraMap.isEmpty()) {
-                paraMap.forEach(job::setVariable);
+                paraMap.forEach((k,v)->{
+                    try {
+                        job.setParameterValue(k,v);
+                    } catch (UnknownParamException e) {
+                        e.printStackTrace();
+                    }
+                });
+//                paraMap.forEach(job::setVariable);
             }
+            job.setLogLevel(LogLevel.DEBUG);
             job.start();
             job.waitUntilFinished();
             if (job.getErrors() > 0) {
@@ -45,13 +55,16 @@ public class KettleUtil {
         }
     }
 
-    public static void runTrans(String[] params, String ktrPath) {
+    public static void runTrans(Map<String,String> paraMap, String ktrPath) {
         try {
             KettleEnvironment.init();
             EnvUtil.environmentInit();
             TransMeta transMeta = new TransMeta(ktrPath);
             Trans trans = new Trans(transMeta);
-            trans.execute(params);
+            if (paraMap != null && !paraMap.isEmpty()) {
+                paraMap.forEach(trans::setVariable);
+            }
+            trans.execute(null);
             trans.waitUntilFinished();
             if (trans.getErrors() > 0) {
                 throw new Exception("Errors during transformation execution!");
